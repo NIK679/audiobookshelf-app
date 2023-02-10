@@ -1,13 +1,14 @@
-name: Build test apk
+name: Build test apk after sync
 
 on:
-  push:
-    branches: [ testing ]
-  workflow_dispatch: # on button click
+  workflow_run:
+    workflows: [Sync Fork]
+    types: [completed]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       
       - name: Checkout code
