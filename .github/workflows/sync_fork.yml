@@ -2,7 +2,7 @@ name: Sync Fork
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # on button click
 
 jobs:
@@ -15,73 +15,73 @@ jobs:
           base: testing
           head: master
           merge_method: merge
-  build:
-    needs: sync
-    runs-on: ubuntu-latest
-    steps:
+  # build:
+  #   needs: sync
+  #   runs-on: ubuntu-latest
+  #   steps:
       
-      - name: Checkout code
-        uses: actions/checkout@v2
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
       
-      - name: Install the required node packages
-        run: npm install
+  #     - name: Install the required node packages
+  #       run: npm install
       
-      - name: Generate static web app
-        run: npm run generate
+  #     - name: Generate static web app
+  #       run: npm run generate
       
-      - name: Copy web app into native android/ios folders
-        run: npx cap sync
+  #     - name: Copy web app into native android/ios folders
+  #       run: npx cap sync
 
-      - name: Make ./gradlew command executable
-        run: cd android && chmod +x ./gradlew && cd ..
+  #     - name: Make ./gradlew command executable
+  #       run: cd android && chmod +x ./gradlew && cd ..
       
-      - name: Generate Release APK
-        run: cd android && ./gradlew assembleRelease && cd ..
+  #     - name: Generate Release APK
+  #       run: cd android && ./gradlew assembleRelease && cd ..
       
-      - name: Generate Debug APK
-        run: cd android && ./gradlew assembleDebug && cd ..
+  #     - name: Generate Debug APK
+  #       run: cd android && ./gradlew assembleDebug && cd ..
       
-      - name: Sign Release APK
-        uses: r0adkll/sign-android-release@v1
-        # ID used to access action output
-        id: sign_app_release
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+  #     - name: Sign Release APK
+  #       uses: r0adkll/sign-android-release@v1
+  #       # ID used to access action output
+  #       id: sign_app_release
+  #       with:
+  #         releaseDirectory: android/app/build/outputs/apk/release
+  #         signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+  #         alias: ${{ secrets.ALIAS }}
+  #         keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+  #         keyPassword: ${{ secrets.KEY_PASSWORD }}
           
-      - name: Sign Debug APK
-        uses: r0adkll/sign-android-release@v1
-        # ID used to access action output
-        id: sign_app_debug
-        with:
-          releaseDirectory: android/app/build/outputs/apk/debug
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+  #     - name: Sign Debug APK
+  #       uses: r0adkll/sign-android-release@v1
+  #       # ID used to access action output
+  #       id: sign_app_debug
+  #       with:
+  #         releaseDirectory: android/app/build/outputs/apk/debug
+  #         signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+  #         alias: ${{ secrets.ALIAS }}
+  #         keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+  #         keyPassword: ${{ secrets.KEY_PASSWORD }}
       
-      - name: Set tag
-        id: tag
-        run: echo "tag=$(git rev-parse --short HEAD)-$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+  #     - name: Set tag
+  #       id: tag
+  #       run: echo "tag=$(git rev-parse --short HEAD)-$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
         
-      - name: Rename Release APK
-        run: mv android/app/build/outputs/apk/release/app-release-unsigned-signed.apk android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
+  #     - name: Rename Release APK
+  #       run: mv android/app/build/outputs/apk/release/app-release-unsigned-signed.apk android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
 
-      - name: Rename Debug APK
-        run: mv android/app/build/outputs/apk/debug/app-debug-signed.apk android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
+  #     - name: Rename Debug APK
+  #       run: mv android/app/build/outputs/apk/debug/app-debug-signed.apk android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
        
-      - name: Publish Release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: testing-${{ steps.tag.outputs.tag }}
-          prerelease: true
-          title: "Testing Build"
-          files: |
-            android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
-            android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
+  #     - name: Publish Release
+  #       uses: "marvinpinto/action-automatic-releases@latest"
+  #       with:
+  #         repo_token: "${{ secrets.GITHUB_TOKEN }}"
+  #         automatic_release_tag: testing-${{ steps.tag.outputs.tag }}
+  #         prerelease: true
+  #         title: "Testing Build"
+  #         files: |
+  #           android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
+  #           android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
  
 
