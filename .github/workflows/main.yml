@@ -55,7 +55,7 @@ jobs:
       
       - name: Set tag
         id: tag
-        run: echo "tag=$(date +'%Y-%m-%d')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "tag=$(date +'%F_%H-%M-%S')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         
       - name: Rename Release APK
         run: mv android/app/build/outputs/apk/release/app-release-unsigned-signed.apk android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
