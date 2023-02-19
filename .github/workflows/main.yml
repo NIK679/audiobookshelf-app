@@ -28,13 +28,16 @@ jobs:
         run: npx cap sync
 
       - name: Make ./gradlew command executable
-        run: chmod +x ./android/gradlew
+        working-directory: android/
+        run: chmod +x ./gradlew
       
       - name: Generate Release APK
-        run: ./android/gradlew assembleRelease
+        working-directory: android/
+        run: ./gradlew assembleRelease
       
       - name: Generate Debug APK
-        run: ./android/gradlew assembleDebug
+        working-directory: android/
+        run: ./gradlew assembleDebug
       
       - name: Sign Release APK
         uses: r0adkll/sign-android-release@v1
