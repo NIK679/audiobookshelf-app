@@ -12,10 +12,15 @@ jobs:
     steps:
       
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
       
       - name: Install the required node packages
-        run: npm install
+        run: npm ci
       
       - name: Generate static web app
         run: npm run generate
@@ -24,13 +29,13 @@ jobs:
         run: npx cap sync
 
       - name: Make ./gradlew command executable
-        run: cd android && chmod +x ./gradlew && cd ..
+        run: chmod +x ./android/gradlew
       
       - name: Generate Release APK
-        run: cd android && ./gradlew assembleRelease && cd ..
+        run: ./android/gradlew assembleRelease
       
       - name: Generate Debug APK
-        run: cd android && ./gradlew assembleDebug && cd ..
+        run: ./android/gradlew assembleDebug
       
       - name: Sign Release APK
         uses: r0adkll/sign-android-release@v1
@@ -56,23 +61,31 @@ jobs:
       
       - name: Set tag
         id: tag
-        run: echo "tag=$(date +'%F_%H-%M-%S')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "tag=$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         
       - name: Rename Release APK
-        run: mv android/app/build/outputs/apk/release/app-release-unsigned-signed.apk android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
+        working-directory: android/app/build/outputs/apk/release/
+        run: mv app-release-unsigned-signed.apk testing-release-${{ steps.tag.outputs.tag }}.apk
 
       - name: Rename Debug APK
-        run: mv android/app/build/outputs/apk/debug/app-debug-signed.apk android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
+        working-directory: android/app/build/outputs/apk/debug/
+        run: mv app-debug-signed.apk testing-debug-${{ steps.tag.outputs.tag }}.apk
+
+      - name: Upload app
+        uses: actions/upload-artifact@v3
+        with:
+          name: audiobookshelf-apk
+          path: |
+            android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
+            android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
        
       - name: Publish Release
-        uses: "marvinpinto/action-automatic-releases@latest"
+        uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: testing-${{ steps.tag.outputs.tag }}
+          automatic_release_tag: ${{ steps.tag.outputs.tag }}
           prerelease: true
           title: "Testing Build"
           files: |
             android/app/build/outputs/apk/release/testing-release-${{ steps.tag.outputs.tag }}.apk
             android/app/build/outputs/apk/debug/testing-debug-${{ steps.tag.outputs.tag }}.apk
- 
-
