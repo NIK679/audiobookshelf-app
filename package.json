@@ -1,6 +1,6 @@
 {
   "name": "audiobookshelf-app",
-  "version": "0.9.65-beta",
+  "version": "0.9.66-beta",
   "author": "advplyr",
   "scripts": {
     "dev": "nuxt --hostname 0.0.0.0 --port 1337",
@@ -13,6 +13,7 @@
     "ionic:serve": "npm run start"
   },
   "dependencies": {
+    "@byteowls/capacitor-oauth2": "^5.0.0",
     "@capacitor/android": "^5.0.0",
     "@capacitor/app": "^5.0.0",
     "@capacitor/clipboard": "^5.0.0",
