@@ -36,8 +36,8 @@ android {
     applicationId "com.audiobookshelf.app"
     minSdkVersion rootProject.ext.minSdkVersion
     targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode 110
-    versionName "0.9.79-beta"
+    versionCode 120
+    versionName "0.14.1-beta"
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     manifestPlaceholders = [
       "appAuthRedirectScheme": "com.audiobookshelf.app"
@@ -86,12 +86,13 @@ dependencies {
   implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
   implementation project(':capacitor-android')
 
-  implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+  implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
   implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
 
   implementation project(':capacitor-cordova-android-plugins')
 
   implementation "androidx.core:core-ktx:$androidx_core_ktx_version"
+  implementation "androidx.work:work-runtime-ktx:2.9.1"
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines_version"
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlin_coroutines_version"

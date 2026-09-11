@@ -11,8 +11,28 @@ import RealmSwift
 import Network
 
 @objc(AbsAudioPlayer)
-public class AbsAudioPlayer: CAPPlugin {
-    private let logger = AppLogger(category: "AbsAudioPlayer")
+public class AbsAudioPlayer: CAPPlugin, CAPBridgedPlugin {
+    public var identifier = "AbsAudioPlayerPlugin"
+    public var jsName = "AbsAudioPlayer"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "onReady", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "prepareLibraryItem", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "closePlayback", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setPlaybackSpeed", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setChapterTrack", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playPlayer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pausePlayer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playPause", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "seek", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "seekForward", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "seekBackward", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCurrentTime", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelSleepTimer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "decreaseSleepTime", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "increaseSleepTime", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getSleepTimerTime", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setSleepTimer", returnType: CAPPluginReturnPromise)
+    ]
 
     private var initialPlayWhenReady = false
     private var monitor: NWPathMonitor?
@@ -60,7 +80,7 @@ public class AbsAudioPlayer: CAPPlugin {
         let startTimeOverride = call.getDouble("startTime")
 
         if libraryItemId == nil {
-            logger.error("provide library item id")
+            AbsLogger.error(message: "No id provided")
             return call.resolve()
         }
 
@@ -71,7 +91,7 @@ public class AbsAudioPlayer: CAPPlugin {
             let item = Database.shared.getLocalLibraryItem(localLibraryItemId: libraryItemId!)
             let episode = item?.getPodcastEpisode(episodeId: episodeId)
             guard let playbackSession = item?.getPlaybackSession(episode: episode) else {
-                logger.error("Failed to get local playback session")
+                AbsLogger.error(message: "Failed to get local playback session")
                 return call.resolve([:])
             }
 
@@ -83,7 +103,7 @@ public class AbsAudioPlayer: CAPPlugin {
                 try self.startPlaybackSession(playbackSession, playWhenReady: playWhenReady, playbackRate: playbackRate)
                 call.resolve(try playbackSession.asDictionary())
             } catch(let exception) {
-                logger.error("Failed to start session")
+                AbsLogger.error(message: "Failed to start session for local item: \(exception)")
                 debugPrint(exception)
                 call.resolve([:])
             }
@@ -97,7 +117,7 @@ public class AbsAudioPlayer: CAPPlugin {
                     try self?.startPlaybackSession(session, playWhenReady: playWhenReady, playbackRate: playbackRate)
                     call.resolve(try session.asDictionary())
                 } catch(let exception) {
-                    self?.logger.error("Failed to start session")
+                    AbsLogger.error(message: "Failed to start streaming session")
                     debugPrint(exception)
                     call.resolve([:])
                 }
@@ -105,19 +125,22 @@ public class AbsAudioPlayer: CAPPlugin {
         }
     }
 
+    /// Stops playback and closes session.
     @objc func closePlayback(_ call: CAPPluginCall) {
-        logger.log("Close playback")
+        AbsLogger.info(message: "Close playback")
 
         PlayerHandler.stopPlayback()
         call.resolve()
     }
 
+    
     @objc func getCurrentTime(_ call: CAPPluginCall) {
         call.resolve([
             "value": PlayerHandler.getCurrentTime() ?? 0,
             "bufferedTime": PlayerHandler.getCurrentTime() ?? 0,
         ])
     }
+
     @objc func setPlaybackSpeed(_ call: CAPPluginCall) {
         let playbackRate = call.getFloat("value", 1.0)
         let settings = PlayerSettings.main()
@@ -130,7 +153,7 @@ public class AbsAudioPlayer: CAPPlugin {
 
     @objc func setChapterTrack(_ call: CAPPluginCall) {
         let chapterTrack = call.getBool("enabled", true)
-        logger.log(String(chapterTrack))
+        AbsLogger.info(message: String(chapterTrack))
         let settings = PlayerSettings.main()
         try? settings.update {
             settings.chapterTrack = chapterTrack
@@ -203,7 +226,7 @@ public class AbsAudioPlayer: CAPPlugin {
 
         let seconds = time / 1000
 
-        logger.log("chapter time: \(isChapterTime)")
+        AbsLogger.info(message: "chapter time: \(isChapterTime)")
         if isChapterTime {
             PlayerHandler.setChapterSleepTime(stopAt: seconds)
             return call.resolve([ "success": true ])
@@ -240,7 +263,7 @@ public class AbsAudioPlayer: CAPPlugin {
         guard let localMediaProgressId = PlayerHandler.getPlaybackSession()?.localMediaProgressId else { return }
         guard let localMediaProgress = Database.shared.getLocalMediaProgress(localMediaProgressId: localMediaProgressId) else { return }
         guard let progressUpdate = try? localMediaProgress.asDictionary() else { return }
-        logger.log("Sending local progress back to the UI")
+        AbsLogger.info(message: "Sending local progress back to the UI")
         self.notifyListeners("onLocalMediaProgressUpdate", data: progressUpdate)
     }
 
@@ -250,7 +273,7 @@ public class AbsAudioPlayer: CAPPlugin {
             let playWhenReady = PlayerHandler.getPlayWhenReady()
             let libraryItemId = session?.libraryItemId ?? ""
             let episodeId = session?.episodeId ?? nil
-            logger.log("Forcing Transcode")
+            AbsLogger.info(message: "Forcing Transcode")
 
             // If direct playing then fallback to transcode
             ApiClient.startPlaybackSession(libraryItemId: libraryItemId, episodeId: episodeId, forceTranscode: true) { [weak self] session in
@@ -261,7 +284,7 @@ public class AbsAudioPlayer: CAPPlugin {
                     self.sendPlaybackSession(session: try session.asDictionary())
                     self.sendMetadata()
                 } catch(let exception) {
-                    self?.logger.error("Failed to start transcoded session")
+                    AbsLogger.error(message: "Failed to start transcoded session")
                     debugPrint(exception)
                 }
             }

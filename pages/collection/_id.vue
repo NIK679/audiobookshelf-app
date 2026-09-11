@@ -13,7 +13,7 @@
           </h1>
           <div class="flex-grow" />
           <ui-btn v-if="showPlayButton" color="success" :padding-x="4" :loading="playerIsStartingForThisMedia" small class="flex items-center justify-center mx-1 w-24" @click="playClick">
-            <span class="material-icons">{{ playerIsPlaying ? 'pause' : 'play_arrow' }}</span>
+            <span class="material-symbols text-2xl fill">{{ playerIsPlaying ? 'pause' : 'play_arrow' }}</span>
             <span class="px-1 text-sm">{{ playerIsPlaying ? $strings.ButtonPause : $strings.ButtonPlay }}</span>
           </ui-btn>
         </div>
@@ -135,8 +135,20 @@ export default {
           this.$eventBus.$emit('play-item', { libraryItemId: nextBookNotRead.id })
         }
       }
+    },
+    libraryChanged(libraryId) {
+      // A collection belongs to a single library, so leave this page when a different library is
+      // selected rather than showing a collection that is not in the current library
+      if (!libraryId || libraryId !== this.collection.libraryId) {
+        this.$router.replace('/bookshelf/collections')
+      }
     }
   },
-  mounted() {}
+  mounted() {
+    this.$eventBus.$on('library-changed', this.libraryChanged)
+  },
+  beforeDestroy() {
+    this.$eventBus.$off('library-changed', this.libraryChanged)
+  }
 }
 </script>

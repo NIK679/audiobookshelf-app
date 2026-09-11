@@ -1,20 +1,20 @@
 <template>
-  <div v-if="show" :data-theme="ereaderTheme" class="group fixed top-0 left-0 right-0 layout-wrapper w-full z-40 pt-8 data-[theme=dark]:bg-[#232323] data-[theme=dark]:text-white data-[theme=light]:bg-white data-[theme=light]:text-black" :class="{ 'reader-player-open': isPlayerOpen }">
+  <div v-if="show" :data-theme="ereaderTheme" class="group fixed top-0 left-0 right-0 layout-wrapper w-full z-40 pt-8 data-[theme=black]:bg-black data-[theme=black]:text-white data-[theme=dark]:bg-[#232323] data-[theme=dark]:text-white data-[theme=light]:bg-white data-[theme=light]:text-black" :class="{ 'reader-player-open': isPlayerOpen }">
     <!-- toolbar -->
-    <div class="h-32 pt-10 w-full px-2 fixed top-0 left-0 z-30 transition-transform bg-bg text-fg" :class="showingToolbar ? 'translate-y-0' : '-translate-y-32'" :style="{ boxShadow: showingToolbar ? '0px 8px 8px #11111155' : '' }" @touchstart.stop @mousedown.stop @touchend.stop @mouseup.stop>
+    <div class="w-full px-2 fixed top-0 left-0 z-30 transition-transform bg-bg text-fg" :class="`${showingToolbar ? 'translate-y-0' : '-translate-y-36'} ${isIos ? 'pt-14 h-36' : 'pt-10 h-32'}`" :style="{ boxShadow: showingToolbar ? '0px 8px 8px #11111155' : '' }" @touchstart.stop @mousedown.stop @touchend.stop @mouseup.stop>
       <div class="flex items-center mb-2">
         <button type="button" class="inline-flex mx-2" @click.stop="show = false">
-          <span class="material-icons-outlined text-3xl text-fg">chevron_left</span>
+          <span class="material-symbols text-3xl text-fg">chevron_left</span>
         </button>
         <div class="flex-grow" />
         <button v-if="isComic || isEpub" type="button" class="inline-flex mx-2" @click.stop="clickTOCBtn">
-          <span class="material-icons-outlined text-2xl text-fg">format_list_bulleted</span>
+          <span class="material-symbols text-2xl text-fg">format_list_bulleted</span>
         </button>
         <button v-if="isEpub" type="button" class="inline-flex mx-2" @click.stop="clickSettingsBtn">
-          <span class="material-icons text-2xl text-fg">settings</span>
+          <span class="material-symbols text-2xl text-fg">settings</span>
         </button>
         <button v-if="comicHasMetadata" type="button" class="inline-flex mx-2" @click.stop="clickMetadataBtn">
-          <span class="material-icons text-2xl text-fg">more</span>
+          <span class="material-symbols text-2xl text-fg">more</span>
         </button>
       </div>
 
@@ -22,14 +22,14 @@
     </div>
 
     <!-- ereader -->
-    <component v-if="readerComponentName" ref="readerComponent" :is="readerComponentName" :url="ebookUrl" :library-item="selectedLibraryItem" :is-local="isLocal" :keep-progress="keepProgress" @touchstart="touchstart" @touchend="touchend" @loaded="readerLoaded" @hook:mounted="readerMounted" />
+    <component v-if="readerComponentName" ref="readerComponent" :is="readerComponentName" :url="ebookUrl" :library-item="selectedLibraryItem" :is-local="isLocal" :keep-progress="keepProgress" :showing-toolbar="showingToolbar" @touchstart="touchstart" @touchend="touchend" @loaded="readerLoaded" @hook:mounted="readerMounted" />
 
     <!-- table of contents modal -->
     <modals-fullscreen-modal v-model="showTOCModal" :theme="ereaderTheme">
       <div class="flex items-end justify-between h-20 px-4 pb-2">
         <h1 class="text-lg">{{ $strings.HeaderTableOfContents }}</h1>
         <button class="flex" @click.stop="showTOCModal = false">
-          <span class="material-icons">close</span>
+          <span class="material-symbols">close</span>
         </button>
       </div>
 
@@ -59,16 +59,22 @@
         <div class="flex items-end justify-between h-14 px-4 pb-2 mb-6">
           <h1 class="text-lg">{{ $strings.HeaderEreaderSettings }}</h1>
           <button class="flex" @click="showSettingsModal = false">
-            <span class="material-icons">close</span>
+            <span class="material-symbols">close</span>
           </button>
         </div>
-        <div class="w-full overflow-y-auto overflow-x-hidden h-full max-h-[calc(75vh-85px)]">
+        <div class="w-full overflow-y-auto overflow-x-hidden h-[calc(75vh-85px)] min-h-[320px] short:min-h-0 short:h-[calc(100vh-85px)]">
           <div class="w-full h-full px-4">
             <div class="flex items-center mb-6">
               <div class="w-32">
                 <p class="text-sm">{{ $strings.LabelTheme }}</p>
               </div>
               <ui-toggle-btns v-model="ereaderSettings.theme" name="theme" :items="themeItems" @input="settingsUpdated" />
+            </div>
+            <div class="flex items-center mb-6">
+              <div class="w-32">
+                <p class="text-sm">{{ $strings.LabelFontFamily }}</p>
+              </div>
+              <ui-toggle-btns v-model="ereaderSettings.font" name="font" :items="fontItems" @input="settingsUpdated" />
             </div>
             <div class="flex items-center mb-6">
               <div class="w-32">
@@ -141,6 +147,7 @@ export default {
       isInittingWatchVolume: false,
       ereaderSettings: {
         theme: 'dark',
+        font: 'serif',
         fontScale: 100,
         lineSpacing: 115,
         spread: 'auto',
@@ -179,6 +186,9 @@ export default {
       set(val) {
         this.$store.commit('setShowReader', val)
       }
+    },
+    isIos() {
+      return this.$platform === 'ios'
     },
     title() {
       return this.mediaMetadata.title || 'No Title'
@@ -239,12 +249,28 @@ export default {
     themeItems() {
       return [
         {
+          text: this.$strings.LabelThemeBlack,
+          value: 'black'
+        },
+        {
           text: this.$strings.LabelThemeDark,
           value: 'dark'
         },
         {
           text: this.$strings.LabelThemeLight,
           value: 'light'
+        }
+      ]
+    },
+    fontItems() {
+      return [
+        {
+          text: this.$strings.LabelFontFamilySans,
+          value: 'sans-serif'
+        },
+        {
+          text: this.$strings.LabelFontFamilySerif,
+          value: 'serif'
         }
       ]
     },
@@ -256,6 +282,7 @@ export default {
       return null
     },
     ebookFile() {
+      if (!this.media) return null
       // ebook file id is passed when reading a supplementary ebook
       if (this.ebookFileId) {
         return this.selectedLibraryItem.libraryFiles.find((lf) => lf.ino === this.ebookFileId)
@@ -300,11 +327,11 @@ export default {
       if (this.localContentUrl) {
         return Capacitor.convertFileSrc(this.localContentUrl)
       }
-      const serverAddress = this.$store.getters['user/getServerAddress']
+
       if (this.ebookFileId) {
-        return `${serverAddress}/api/items/${this.selectedLibraryItem.id}/ebook/${this.ebookFileId}`
+        return `/api/items/${this.selectedLibraryItem.id}/ebook/${this.ebookFileId}`
       }
-      return `${serverAddress}/api/items/${this.selectedLibraryItem.id}/ebook`
+      return `/api/items/${this.selectedLibraryItem.id}/ebook`
     },
     isPlayerOpen() {
       return this.$store.getters['getIsPlayerOpen']

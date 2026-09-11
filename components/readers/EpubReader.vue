@@ -2,7 +2,7 @@
   <div id="epub-frame" class="w-full">
     <div id="viewer" class="h-full w-full"></div>
 
-    <div class="fixed left-0 h-8 w-full px-4 flex items-center" :class="isLightTheme ? 'bg-white text-black' : 'bg-[#232323] text-white/80'" :style="{ bottom: isPlayerOpen ? '120px' : '0px' }">
+    <div class="fixed left-0 h-8 w-full px-4 flex items-center" :class="isLightTheme ? 'bg-white text-black' : isDarkTheme ? 'bg-[#232323] text-white/80' : 'bg-black text-white/80'" :style="{ bottom: isPlayerOpen ? '120px' : '0px' }">
       <p v-if="totalLocations" class="text-xs text-slate-600">Location {{ currentLocationNum }} of {{ totalLocations }}</p>
       <div class="flex-grow" />
       <p class="text-xs">{{ progress }}%</p>
@@ -37,6 +37,7 @@ export default {
       isRefreshingUI: false,
       ereaderSettings: {
         theme: 'dark',
+        font: 'serif',
         fontScale: 100,
         lineSpacing: 115,
         textStroke: 0
@@ -49,9 +50,6 @@ export default {
     }
   },
   computed: {
-    userToken() {
-      return this.$store.getters['user/getToken']
-    },
     /** @returns {string} */
     libraryItemId() {
       return this.libraryItem?.id
@@ -105,17 +103,21 @@ export default {
     isLightTheme() {
       return this.ereaderSettings.theme === 'light'
     },
+    isDarkTheme() {
+      return this.ereaderSettings.theme === 'dark'
+    },
     themeRules() {
       const isDark = this.ereaderSettings.theme === 'dark'
-      const fontColor = isDark ? '#fff' : '#000'
-      const backgroundColor = isDark ? 'rgb(35 35 35)' : 'rgb(255, 255, 255)'
+      const isBlack = this.ereaderSettings.theme === 'black'
+      const fontColor = isDark ? '#fff' : isBlack ? '#fff' : '#000'
+      const backgroundColor = isDark ? 'rgb(35 35 35)' : isBlack ? 'rgb(0 0 0)' : 'rgb(255, 255, 255)'
 
       return {
         '*': {
           color: `${fontColor}!important`,
           'background-color': `${backgroundColor}!important`,
           'line-height': this.ereaderSettings.lineSpacing + '%!important',
-          '-webkit-text-stroke': this.ereaderSettings.textStroke/100 + 'px ' + fontColor + '!important'
+          '-webkit-text-stroke': this.ereaderSettings.textStroke / 100 + 'px ' + fontColor + '!important'
         },
         a: {
           color: `${fontColor}!important`
@@ -133,6 +135,7 @@ export default {
 
       const fontScale = settings.fontScale || 100
       this.rendition.themes.fontSize(`${fontScale}%`)
+      this.rendition.themes.font(settings.font)
       this.rendition.spread(settings.spread || 'auto')
     },
     goToChapter(href) {
@@ -294,15 +297,26 @@ export default {
 
       /** @type {EpubReader} */
       const reader = this
+
+      // Use axios to make request because we have token refresh logic in interceptor
+      const customRequest = async (url) => {
+        try {
+          return this.$axios.$get(url, {
+            responseType: 'arraybuffer'
+          })
+        } catch (error) {
+          console.error('EpubReader.initEpub customRequest failed:', error)
+          throw error
+        }
+      }
+
       console.log('[EpubReader] initEpub', reader.url)
       /** @type {ePub.Book} */
       reader.book = new ePub(reader.url, {
         width: window.innerWidth,
         height: window.innerHeight - this.readerHeightOffset,
         openAs: 'epub',
-        requestHeaders: {
-          Authorization: `Bearer ${this.userToken}`
-        }
+        requestMethod: this.isLocal ? null : customRequest
       })
 
       /** @type {ePub.Rendition} */
@@ -427,7 +441,7 @@ export default {
       document.removeEventListener('orientationchange', this.screenOrientationChange)
     }
     window.removeEventListener('resize', this.screenOrientationChange)
-  },
+  }
 }
 </script>
 

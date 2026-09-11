@@ -2,12 +2,12 @@
   <div class="w-full h-full relative">
     <div v-show="canGoPrev" class="absolute top-0 left-0 h-full w-1/2 hover:opacity-100 opacity-0 z-10 cursor-pointer" @click.stop.prevent="prev" @mousedown.prevent>
       <div class="flex items-center justify-center h-full w-1/2">
-        <span class="material-icons text-5xl text-white cursor-pointer text-opacity-30 hover:text-opacity-90">arrow_back_ios</span>
+        <span class="material-symbols text-5xl text-white cursor-pointer text-opacity-30 hover:text-opacity-90">arrow_back_ios</span>
       </div>
     </div>
     <div v-show="canGoNext" class="absolute top-0 right-0 h-full w-1/2 hover:opacity-100 opacity-0 z-10 cursor-pointer" @click.stop.prevent="next" @mousedown.prevent>
       <div class="flex items-center justify-center h-full w-1/2 ml-auto">
-        <span class="material-icons text-5xl text-white cursor-pointer text-opacity-30 hover:text-opacity-90">arrow_forward_ios</span>
+        <span class="material-symbols text-5xl text-white cursor-pointer text-opacity-30 hover:text-opacity-90">arrow_forward_ios</span>
       </div>
     </div>
 
@@ -49,7 +49,8 @@ export default {
       numPages: 0,
       windowWidth: 0,
       windowHeight: 0,
-      pdfDocInitParams: null
+      pdfDocInitParams: null,
+      isRefreshing: false
     }
   },
   computed: {
@@ -109,6 +110,10 @@ export default {
     },
     isPlayerOpen() {
       return this.$store.getters['getIsPlayerOpen']
+    },
+    ebookUrl() {
+      const serverAddress = this.$store.getters['user/getServerAddress']
+      return this.isLocal ? this.url : `${serverAddress}${this.url}`
     }
   },
   methods: {
@@ -164,7 +169,56 @@ export default {
       this.page++
       this.updateProgress()
     },
-    error(err) {
+    async handleRefreshFailure() {
+      try {
+        console.log('[PdfReader] Handling refresh failure - logging out user')
+
+        const serverConnectionConfigId = this.$store.getters['user/getServerConnectionConfigId']
+
+        // Clear store
+        await this.$store.dispatch('user/logout')
+
+        if (serverConnectionConfigId) {
+          // Clear refresh token for server connection config
+          await this.$db.clearRefreshToken(serverConnectionConfigId)
+        }
+
+        if (window.location.pathname !== '/connect') {
+          window.location.href = '/connect?error=refreshTokenFailed&serverConnectionConfigId=' + serverConnectionConfigId
+        }
+      } catch (error) {
+        console.error('[PdfReader] Failed to handle refresh failure:', error)
+      }
+    },
+    async refreshToken() {
+      if (this.isRefreshing) return
+      this.isRefreshing = true
+      // Cannot use axios with this pdf reader so we need to handle the refresh separately
+      // Should work on migrating to a different pdf reader in the future
+      const newAccessToken = await this.$store.dispatch('user/refreshToken').catch((error) => {
+        console.error('Failed to refresh token', error)
+        return null
+      })
+      if (!newAccessToken) {
+        this.handleRefreshFailure()
+        return
+      }
+
+      // Force Vue to re-render the PDF component by creating a new object
+      this.pdfDocInitParams = {
+        url: this.ebookUrl,
+        httpHeaders: {
+          Authorization: `Bearer ${newAccessToken}`
+        }
+      }
+      this.isRefreshing = false
+    },
+    async error(err) {
+      if (err && err.status === 401) {
+        console.log('Received 401 error, refreshing token')
+        await this.refreshToken()
+        return
+      }
       console.error(err)
     },
     screenOrientationChange() {
@@ -173,7 +227,7 @@ export default {
     },
     init() {
       this.pdfDocInitParams = {
-        url: this.url,
+        url: this.ebookUrl,
         httpHeaders: {
           Authorization: `Bearer ${this.userToken}`
         }

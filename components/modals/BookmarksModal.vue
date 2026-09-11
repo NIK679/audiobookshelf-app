@@ -10,14 +10,14 @@
         <div class="w-full h-full p-4" v-if="showBookmarkTitleInput">
           <div class="flex mb-4 items-center">
             <div class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white hover:bg-opacity-10 cursor-pointer" @click.stop="showBookmarkTitleInput = false">
-              <span class="material-icons text-3xl">arrow_back</span>
+              <span class="material-symbols text-3xl">arrow_back</span>
             </div>
             <p class="text-xl pl-2">{{ selectedBookmark ? 'Edit Bookmark' : 'New Bookmark' }}</p>
             <div class="flex-grow" />
             <p class="text-xl font-mono">{{ this.$secondsToTimestamp(currentTime / _playbackRate) }}</p>
           </div>
 
-          <ui-text-input-with-label v-model="newBookmarkTitle" ref="noteInput" label="Note" />
+          <ui-text-input-with-label v-model="newBookmarkTitle" :placeholder="bookmarkPlaceholder()" :autofocus="false" ref="noteInput" label="Note" />
           <div class="flex justify-end mt-6">
             <ui-btn color="success" class="w-full" @click.stop="submitBookmark">{{ selectedBookmark ? 'Update' : 'Create' }}</ui-btn>
           </div>
@@ -31,7 +31,7 @@
           </div>
         </div>
         <div v-if="canCreateBookmark && !showBookmarkTitleInput" class="flex px-4 py-2 items-center text-center justify-between border-b border-fg/10 bg-success cursor-pointer text-white text-opacity-80 sticky bottom-0 left-0 w-full" @click.stop="createBookmark">
-          <span class="material-icons">add</span>
+          <span class="material-symbols">add</span>
           <p class="text-base pl-2">{{ $strings.ButtonCreateBookmark }}</p>
           <p class="text-sm font-mono">{{ this.$secondsToTimestamp(currentTime / _playbackRate) }}</p>
         </div>
@@ -93,6 +93,10 @@ export default {
     }
   },
   methods: {
+    bookmarkPlaceholder() {
+      // using a method prevents caching the date
+      return this.$formatDate(Date.now(), 'MMM dd, yyyy HH:mm')
+    },
     editBookmark(bm) {
       this.selectedBookmark = bm
       this.newBookmarkTitle = bm.title
@@ -157,18 +161,8 @@ export default {
     },
     createBookmark() {
       this.selectedBookmark = null
-      this.newBookmarkTitle = this.$formatDate(Date.now(), 'MMM dd, yyyy HH:mm')
+      this.newBookmarkTitle = ''
       this.showBookmarkTitleInput = true
-
-      // Auto focus the input and select the text
-      this.$nextTick(() => {
-        if (this.$refs.noteInput?.$refs.input?.$refs.input) {
-          this.$refs.noteInput.$refs.input.$refs.input.focus()
-          setTimeout(() => {
-            this.$refs.noteInput?.$refs.input?.$refs.input?.select()
-          }, 10)
-        }
-      })
     },
     async submitBookmark() {
       await this.$hapticsImpact()
